@@ -16,12 +16,23 @@ final class PushManager {
         UserDefaults.standard.set(token, forKey: tokenKey)
     }
 
+    @MainActor
     func requestAuthorization() async {
+        let center = UNUserNotificationCenter.current()
+        let settings = await center.notificationSettings()
+
+        // Already authorized (e.g. enabled in Settings after a prior denial) —
+        // requestAuthorization() would return granted=false in this case and skip
+        // registration, so we call registerForRemoteNotifications() directly.
+        if settings.authorizationStatus == .authorized {
+            UIApplication.shared.registerForRemoteNotifications()
+            return
+        }
+
         do {
-            let granted = try await UNUserNotificationCenter.current()
-                .requestAuthorization(options: [.alert, .sound, .badge])
+            let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
             if granted {
-                await UIApplication.shared.registerForRemoteNotifications()
+                UIApplication.shared.registerForRemoteNotifications()
             }
         } catch {
             print("Push authorization error: \(error)")
@@ -47,9 +58,13 @@ final class PushManager {
             watcher_name: watcher.name
         ))
 
-        let (_, response) = try await URLSession.shared.data(for: req)
-        guard let http = response as? HTTPURLResponse, (200...204).contains(http.statusCode) else {
-            throw PushError.registrationRejected
+        let (data, response) = try await URLSession.shared.data(for: req)
+        guard let http = response as? HTTPURLResponse else {
+            throw PushError.registrationRejected(status: -1, body: "No HTTP response")
+        }
+        guard (200...204).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw PushError.registrationRejected(status: http.statusCode, body: body)
         }
     }
 
@@ -65,7 +80,7 @@ final class PushManager {
     enum PushError: LocalizedError {
         case noDeviceToken
         case invalidURL
-        case registrationRejected
+        case registrationRejected(status: Int, body: String)
 
         var errorDescription: String? {
             switch self {
@@ -73,8 +88,18 @@ final class PushManager {
                 return "Notifications not yet authorized. Allow notifications first, then try again."
             case .invalidURL:
                 return "The backend URL is invalid."
-            case .registrationRejected:
-                return "The backend rejected the registration. Check the URL and token."
+            case .registrationRejected(let status, let body):
+                let detail = body.isEmpty ? "" : " — \(body)"
+                switch status {
+                case 401:
+                    return "Rejected (401 Unauthorized)\(detail). The token doesn't match the backend."
+                case 400:
+                    return "Rejected (400 Bad Request)\(detail). The device token or payload is malformed."
+                case 404:
+                    return "Rejected (404 Not Found)\(detail). Check the backend URL — is the path and port right?"
+                default:
+                    return "Rejected (HTTP \(status))\(detail). Check the URL and token."
+                }
             }
         }
     }

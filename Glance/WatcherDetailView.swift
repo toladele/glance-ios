@@ -12,6 +12,7 @@ struct WatcherDetailView: View {
     // @AppStorage re-renders the view automatically when the token arrives from APNs,
     // unlike a plain computed property which SwiftUI only evaluates at initial render.
     @AppStorage("glance.deviceToken") private var storedDeviceToken: String = ""
+    @AppStorage("glance.apnsError") private var apnsError: String = ""
 
     private var watcher: Watcher? {
         store.watchers.first { $0.id == watcherId }
@@ -76,6 +77,14 @@ struct WatcherDetailView: View {
                             if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
                                 UIApplication.shared.open(url)
                             }
+                        }
+                        Button("Retry") {
+                            Task { await PushManager.shared.requestAuthorization() }
+                        }
+                        if !apnsError.isEmpty {
+                            Text("APNs error: \(apnsError)")
+                                .font(.caption)
+                                .foregroundStyle(.red)
                         }
                     } else {
                         Button {

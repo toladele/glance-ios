@@ -23,7 +23,7 @@ targets:
     entitlements:
       path: Glance.entitlements
       properties:
-        com.apple.developer.aps-environment: development
+        aps-environment: development
     info:
       path: Glance/Info.plist
       properties:

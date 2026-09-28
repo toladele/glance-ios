@@ -16,7 +16,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        print("APNs registration failed: \(error.localizedDescription)")
+        UserDefaults.standard.set(error.localizedDescription, forKey: "glance.apnsError")
     }
 
     // Show a banner even when the app is in the foreground.

@@ -26,6 +26,19 @@ struct WatcherEditView: View {
         !backendURL.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
+    // Mirror Watcher.trimmedURL so the edit form previews the resolved URL live.
+    private var normalizedInput: String {
+        backendURL
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    }
+    private var resolvedURL: String {
+        Watcher(backendURL: backendURL).trimmedURL
+    }
+    private var usesPlaintextHTTP: Bool {
+        Watcher(backendURL: backendURL).usesPlaintextHTTP
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -35,6 +48,16 @@ struct WatcherEditView: View {
                         .keyboardType(.URL)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
+                    if resolvedURL != normalizedInput, !normalizedInput.isEmpty {
+                        Label("Will connect to \(resolvedURL)", systemImage: "arrow.turn.down.right")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    if usesPlaintextHTTP {
+                        Label("This URL uses http:// — traffic is unencrypted. Use https:// unless the backend is on a trusted local network.", systemImage: "lock.open")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
                     SecureField("Token (optional)", text: $token)
                 }
 

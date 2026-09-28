@@ -47,9 +47,23 @@ struct Watcher: Identifiable, Codable, Hashable {
     }
 
     var trimmedURL: String {
-        backendURL
+        let cleaned = backendURL
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        // A bare host (no scheme) is ambiguous and, without a scheme, unusable by
+        // URLSession. Default to HTTPS — an explicit http:// is left untouched so a
+        // user can still target a plaintext service on a trusted local network.
+        guard !cleaned.isEmpty else { return cleaned }
+        let lower = cleaned.lowercased()
+        if lower.hasPrefix("http://") || lower.hasPrefix("https://") {
+            return cleaned
+        }
+        return "https://\(cleaned)"
+    }
+
+    /// True when the resolved URL sends unencrypted traffic. Surfaced as a warning.
+    var usesPlaintextHTTP: Bool {
+        trimmedURL.lowercased().hasPrefix("http://")
     }
 }
 
