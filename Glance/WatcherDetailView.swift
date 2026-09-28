@@ -9,6 +9,9 @@ struct WatcherDetailView: View {
     @State private var errorMessage: String?
     @State private var lastChecked: String?
     @State private var showingEdit = false
+    // @AppStorage re-renders the view automatically when the token arrives from APNs,
+    // unlike a plain computed property which SwiftUI only evaluates at initial render.
+    @AppStorage("glance.deviceToken") private var storedDeviceToken: String = ""
 
     private var watcher: Watcher? {
         store.watchers.first { $0.id == watcherId }
@@ -54,8 +57,8 @@ struct WatcherDetailView: View {
                     Spacer()
                     StatusBadge(status: watcher.registrationStatus)
                 }
-                if watcher.mode == .push, let token = PushManager.shared.deviceToken {
-                    Text(token)
+                if watcher.mode == .push, !storedDeviceToken.isEmpty {
+                    Text(storedDeviceToken)
                         .font(.caption2.monospaced())
                         .foregroundStyle(.tertiary)
                         .lineLimit(2)
@@ -74,7 +77,7 @@ struct WatcherDetailView: View {
                             Label("Register for push", systemImage: "antenna.radiowaves.left.and.right")
                         }
                     }
-                    .disabled(isRegistering || PushManager.shared.deviceToken == nil)
+                    .disabled(isRegistering || storedDeviceToken.isEmpty)
                 } else {
                     Button {
                         checkNow(watcher)
