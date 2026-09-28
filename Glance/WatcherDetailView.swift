@@ -68,16 +68,27 @@ struct WatcherDetailView: View {
 
             Section {
                 if watcher.mode == .push {
-                    Button {
-                        register(watcher)
-                    } label: {
-                        if isRegistering {
-                            Label("Registering…", systemImage: "arrow.triangle.2.circlepath")
-                        } else {
-                            Label("Register for push", systemImage: "antenna.radiowaves.left.and.right")
+                    if storedDeviceToken.isEmpty {
+                        Label("Notifications not allowed for Glance", systemImage: "bell.slash")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Button("Open Notification Settings") {
+                            if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
                         }
+                    } else {
+                        Button {
+                            register(watcher)
+                        } label: {
+                            if isRegistering {
+                                Label("Registering…", systemImage: "arrow.triangle.2.circlepath")
+                            } else {
+                                Label("Register for push", systemImage: "antenna.radiowaves.left.and.right")
+                            }
+                        }
+                        .disabled(isRegistering)
                     }
-                    .disabled(isRegistering || storedDeviceToken.isEmpty)
                 } else {
                     Button {
                         checkNow(watcher)
